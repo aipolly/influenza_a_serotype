@@ -19,4 +19,29 @@ If quality-controlled reads and classified read outputs are not required for dow
 
 This repository is for personal study and research purposes only. For full implementation details and original design, please refer to the original project.
 
-original project url:  <https://github.com/mtisza1/influenza_a_serotype>, 
+original project url:  <https://github.com/mtisza1/influenza_a_serotype>
+
+
+
+#### use conda/mamba
+
+```bash
+git cone https://github.com/aipolly/influenza_a_serotype.git
+mamba create -n ias -f environment/iav_serotype.yaml
+mamba activate ias
+
+mamba run -n iav_serotype -h
+```
+
+
+
+#### using pip
+
+comfirm u have samtools seqkit and fastp
+
+```bash
+
+pip install git+https://github.com/aipolly/influenza_a_serotype.git
+
+```
+
