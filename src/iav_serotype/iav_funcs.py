@@ -58,7 +58,7 @@ def minimap2_sr(reference: str, read1: str, read2: str, file_stem: str, cpus: st
     filtered_bam = f"{file_stem}.filtered.bam"
     sorted_bam = f"{file_stem}.sorted.bam"
 
-    # Run minimap2 to produce SAM (-ax sr)
+    # Run minimap2 to produce SAM (-ax sr), piped to samtools sort
     mini2_command = [
         'minimap2', '-t', str(cpus),
         '-ax', 'sr', '--secondary=yes', '--MD',
@@ -67,21 +67,19 @@ def minimap2_sr(reference: str, read1: str, read2: str, file_stem: str, cpus: st
         '-p', '0.90',
         reference, read1, read2
     ]
+    samtool_sort = ['samtools', 'sort', '-@', '4', '-O', 'BAM', '-o', str(sorted_bam), '-']
 
-    with open(sam_file, 'w') as sam_out:
-        mini2_process = subprocess.Popen(mini2_command, stdout=sam_out, stderr=subprocess.PIPE)
-        _, stderr = mini2_process.communicate()
-        if mini2_process.returncode != 0:
-            raise RuntimeError(f"minimap2 failed with code {mini2_process.returncode}: {stderr.decode().strip()}")
+    p1 = subprocess.Popen(mini2_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p2 = subprocess.Popen(samtool_sort, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if p1.stdout:
+        p1.stdout.close()
+    _, stderr2 = p2.communicate()
+    _, stderr1 = p1.communicate()
 
-    # write BAM
-    with pysam.AlignmentFile(sam_file, "r") as in_sam, \
-         pysam.AlignmentFile(filtered_bam, "wb", template=in_sam) as out_bam:
-        for aln in in_sam:
-            out_bam.write(aln)
-
-    # Sort the BAM
-    pysam.sort('-@', str(cpus), '-o', sorted_bam, filtered_bam)
+    if p1.returncode != 0:
+        raise RuntimeError(f"minimap2 failed with code {p1.returncode}: {stderr1.decode().strip()}")
+    if p2.returncode != 0:
+        raise RuntimeError(f"samtools sort failed with code {p2.returncode}: {stderr2.decode().strip()}")
 
     if os.path.isfile(sam_file):
         os.remove(sam_file)
