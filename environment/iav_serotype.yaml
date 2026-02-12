@@ -13,3 +13,5 @@ dependencies:
   - matplotlib
   - dnaio
   - samtools[version='>=1.17']
+  - pip:
+    - git+https://github.com/aipolly/influenza_a_serotype.git
