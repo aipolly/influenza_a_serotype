@@ -3,6 +3,8 @@ from subprocess import Popen, PIPE, STDOUT
 import os
 import pysam
 import shutil
+import dnaio
+from pathlib import Path
 
 # uncompress .bz2 fastqs
 def unbz2_file(bzread1: str, deread1: str, cpu: str):
@@ -137,6 +139,51 @@ def grep_reads(rname_file: str, reads: str, sero_reads: str, cpus: str):
                     '-r',
                     '-f', rname_file, *read_args],
                     stdout=PIPE, stderr=STDOUT)
+
+def grep_reads_via_dnaio(
+        reads_list:list[str|Path], fastq_list:list[str|Path]) :
+    """Extract reads listed in `reads_list` from FASTQ files in `fastq_list` using dna
+    """
+    reads2file ={}
+    file2fh ={}
+    # print(f"reads_list: {reads_list}, fastq_list: {fastq_list}")
+    for f in reads_list:
+        f = Path(f)
+        if not f.is_file():
+            raise FileNotFoundError(f"Input FASTQ file not found: {f}")
+        with open(f, 'r') as I:
+            for line in I:
+                reads2file[line.strip()] = f
+
+        if len(fastq_list) == 1:
+            fout = f.with_suffix('.fastq.gz')
+            file2fh[f] = dnaio.open(fout, mode='w')
+        elif len(fastq_list) == 2:
+            fout1 = f.with_suffix('.R1.fastq.gz')
+            fout2 = f.with_suffix('.R2.fastq.gz')
+            file2fh[f] = dnaio.open(fout1, fout2, mode='w')
+        else:
+            raise ValueError(f"Expected 1 or 2 FASTQ files, got {len(fastq_list)}")
+    
+    # classify reads into output files
+    if len(fastq_list) == 1:
+        with dnaio.open(fastq_list[0], mode='r') as R :
+            for rec in R:
+                name = rec.name.split()[0]
+                if name in reads2file:
+                    file2fh[reads2file[name]].write(rec)
+    else:
+        with dnaio.open(*fastq_list, mode='r') as R :
+            for rec in R:
+                name = rec[0].name.split()[0]
+                name = name.removesuffix('/1').removesuffix('.1')
+                if name in reads2file:
+                    file2fh[reads2file[name]].write(*rec)
+    
+    # Close all output files
+    for v in file2fh.values():
+        v.close()
+
 
 def bam_list_fastq(rname_file: str, sorted_bam: str, out_fastq_r1: str, out_fastq_r2: str):
     """

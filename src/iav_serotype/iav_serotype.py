@@ -23,7 +23,8 @@ try:
         minimap2_long,
         grep_reads,
         is_tool,
-        bam_list_fastq
+        bam_list_fastq,
+        grep_reads_via_dnaio
     )
     from .assign import assign_serotypes
 except:
@@ -36,7 +37,8 @@ except:
         minimap2_long,
         grep_reads,
         is_tool,
-        bam_list_fastq
+        bam_list_fastq,
+        grep_reads_via_dnaio
     )
     from assign import assign_serotypes
 
@@ -60,7 +62,7 @@ def iav_serotype():
 
     parentpath = Path(pathname).parents[1]
 
-    __version__ = "0.2.1"
+    __version__ = "0.2.1patch"
 
     Def_CPUs = os.cpu_count()
 
@@ -176,14 +178,29 @@ def iav_serotype():
     elif args.DB == "default":
         args.DB = iavs_script_path.replace("src/iav_serotype", "DBs/v1.0")
     
-    DB_file = os.path.join(str(args.DB), 'Influenza_A_segment_sequences.fna')
 
+    # check for database fasta file and minimap2 index, build index if not found. exit if fasta file not found.
+    DB_file = os.path.join(str(args.DB), 'Influenza_A_segment_sequences.fna')
+    DB_file_mmi = DB_file + '.mmi'
+    if not os.path.isfile(DB_file_mmi):
+        logger.info(f'building minimap2 index for database fasta file at {DB_file}')
+        try:
+            mmi_build = Popen(['minimap2', '-d', DB_file_mmi, DB_file], stdout=PIPE, stderr=STDOUT)
+
+            for line in iter(mmi_build.stdout.readline, b''): # b'\n'-separated lines
+                logger.info(line.decode("utf-8").rstrip('\n'))
+            exitcode = mmi_build.wait()
+        except Exception as e:
+            logger.error(e)
+            # sys.exit()
+    DB_file = DB_file_mmi if os.path.isfile(DB_file_mmi) else DB_file
+    
     if not os.path.isfile(DB_file):
         logger.error(f'database fasta file not found at {DB_file}. exiting.')
         sys.exit()
 
-
     logger.info(f"DB: {str(args.DB)}")
+    logger.info(f"DB_file: {DB_file}")
 
     logger.info(f"version:  {str(__version__)}")
 
@@ -268,26 +285,26 @@ def iav_serotype():
     
         # seqkit stats
 
-        seqkit_starttime = time.perf_counter()
+        # seqkit_starttime = time.perf_counter()
 
-        logger.info(f'running seqkit stats on reads')
-        try:
+        # logger.info(f'running seqkit stats on reads')
+        # try:
 
-            seqkitrun = seqkit_stats_paired(ready_r1, ready_r2, str(args.CPU), stat_file)
+        #     seqkitrun = seqkit_stats_paired(ready_r1, ready_r2, str(args.CPU), stat_file)
 
-            with seqkitrun.stdout:
-                log_subprocess_output(seqkitrun.stdout)
-            exitcode = seqkitrun.wait()
+        #     with seqkitrun.stdout:
+        #         log_subprocess_output(seqkitrun.stdout)
+        #     exitcode = seqkitrun.wait()
             
-        except Exception as e:
-            logger.error(e)
-            sys.exit
+        # except Exception as e:
+        #     logger.error(e)
+        #     sys.exit
 
-        seqkit_endtime = time.perf_counter()
+        # seqkit_endtime = time.perf_counter()
 
-        time_taken = seqkit_endtime - seqkit_starttime
+        # time_taken = seqkit_endtime - seqkit_starttime
 
-        logger.info(f"> seqkit stats took {timedelta(seconds=time_taken)}")
+        # logger.info(f"> seqkit stats took {timedelta(seconds=time_taken)}")
 
         # minimap
 
@@ -308,6 +325,8 @@ def iav_serotype():
         logger.info(f"> minimap2 took {timedelta(seconds=time_taken)}")
 
         # Python assignment pipeline (replaces R script)
+        mm_asign_starttime = time.perf_counter()
+
         try:
             assign_outputs = assign_serotypes(
                 sorted_bam,
@@ -320,33 +339,36 @@ def iav_serotype():
         except Exception as e:
             logger.error(f"Assignment step failed: {e}")
             sys.exit()
-
+        mm_asign_endtime = time.perf_counter()
+        time_taken = mm_asign_endtime - mm_asign_starttime
+        logger.info(f"> read assignment took {timedelta(seconds=time_taken)}")
+        
 
     ### long reads option ###
 
     elif str(args.READ_FMT).lower() == "long":
         # seqkit stats
 
-        seqkit_starttime = time.perf_counter()
+        # seqkit_starttime = time.perf_counter()
 
-        logger.info(f'running seqkit stats on reads')
-        try:
+        # logger.info(f'running seqkit stats on reads')
+        # try:
 
-            seqkitrun = seqkit_stats_long(str(READS), str(args.CPU), stat_file)
+        #     seqkitrun = seqkit_stats_long(str(READS), str(args.CPU), stat_file)
 
-            with seqkitrun.stdout:
-                log_subprocess_output(seqkitrun.stdout)
-            exitcode = seqkitrun.wait()
+        #     with seqkitrun.stdout:
+        #         log_subprocess_output(seqkitrun.stdout)
+        #     exitcode = seqkitrun.wait()
             
-        except Exception as e:
-            logger.error(e)
-            sys.exit
+        # except Exception as e:
+        #     logger.error(e)
+        #     sys.exit
 
-        seqkit_endtime = time.perf_counter()
+        # seqkit_endtime = time.perf_counter()
 
-        time_taken = seqkit_endtime - seqkit_starttime
+        # time_taken = seqkit_endtime - seqkit_starttime
 
-        logger.info(f"> seqkit stats took {timedelta(seconds=time_taken)}")
+        # logger.info(f"> seqkit stats took {timedelta(seconds=time_taken)}")
 
         # minimap
 
@@ -367,6 +389,7 @@ def iav_serotype():
         logger.info(f"> minimap2 took {timedelta(seconds=time_taken)}")
 
         # Python assignment pipeline (replaces R script)
+        mm_asign_starttime = time.perf_counter()
         try:
             assign_outputs = assign_serotypes(
                 sorted_bam,
@@ -379,7 +402,9 @@ def iav_serotype():
         except Exception as e:
             logger.error(f"Assignment step failed: {e}")
             sys.exit()
-
+        mm_asign_endtime = time.perf_counter()
+        time_taken = mm_asign_endtime - mm_asign_starttime
+        logger.info(f"> read assignment took {timedelta(seconds=time_taken)}")
     # retrieve reads by serotype
 
     assigned_read_list = []
@@ -393,51 +418,56 @@ def iav_serotype():
         grep_starttime = time.perf_counter()
 
         logger.info('getting reads for each serotype assignment')
+        if str(args.READ_FMT).lower() == "short_paired":
+            grep_reads_via_dnaio(assigned_read_list, [ready_r1, ready_r2])
+        elif str(args.READ_FMT).lower() == "long":
+            grep_reads_via_dnaio(assigned_read_list, args.READS)
 
-        for serotype_r in assigned_read_list:
 
-            ### grep short reads
-            if str(args.READ_FMT).lower() == "short_paired":
+        # for serotype_r in assigned_read_list:
+
+        #     ### grep short reads
+        #     if str(args.READ_FMT).lower() == "short_paired":
             
-                sero_reads1 = serotype_r.replace('.txt', '.R1.fastq')
-                sero_reads2 = serotype_r.replace('.txt', '.R2.fastq')
+        #         sero_reads1 = serotype_r.replace('.txt', '.R1.fastq')
+        #         sero_reads2 = serotype_r.replace('.txt', '.R2.fastq')
 
-                try:
-                    #read R1
-                    grep1run = grep_reads(serotype_r, ready_r1, sero_reads1, str(args.CPU))
+        #         try:
+        #             #read R1
+        #             grep1run = grep_reads(serotype_r, ready_r1, sero_reads1, str(args.CPU))
 
-                    with grep1run.stdout:
-                        log_subprocess_output(grep1run.stdout)
-                    exitcode = grep1run.wait()
+        #             with grep1run.stdout:
+        #                 log_subprocess_output(grep1run.stdout)
+        #             exitcode = grep1run.wait()
 
-                    #read R2
-                    grep2run = grep_reads(serotype_r, ready_r2, sero_reads2, str(args.CPU))
+        #             #read R2
+        #             grep2run = grep_reads(serotype_r, ready_r2, sero_reads2, str(args.CPU))
 
-                    with grep2run.stdout:
-                        log_subprocess_output(grep2run.stdout)
-                    exitcode = grep2run.wait()
+        #             with grep2run.stdout:
+        #                 log_subprocess_output(grep2run.stdout)
+        #             exitcode = grep2run.wait()
 
 
-                except Exception as e:
-                    logger.error(e)
+        #         except Exception as e:
+        #             logger.error(e)
 
-            ### grep long reads
-            elif str(args.READ_FMT).lower() == "long":
-                sero_reads = serotype_r.replace('.txt', '.fastq')
-                try:
-                    greplongrun = grep_reads(serotype_r, str(READS), sero_reads, str(args.CPU))
+        #     ### grep long reads
+        #     elif str(args.READ_FMT).lower() == "long":
+        #         sero_reads = serotype_r.replace('.txt', '.fastq')
+        #         try:
+        #             greplongrun = grep_reads(serotype_r, str(READS), sero_reads, str(args.CPU))
 
-                    with greplongrun.stdout:
-                        log_subprocess_output(greplongrun.stdout)
-                    exitcode = greplongrun.wait()
-                except Exception as e:
-                    logger.error(e)
+        #             with greplongrun.stdout:
+        #                 log_subprocess_output(greplongrun.stdout)
+        #             exitcode = greplongrun.wait()
+        #         except Exception as e:
+        #             logger.error(e)
 
         grep_endtime = time.perf_counter()
 
         time_taken = grep_endtime - grep_starttime
 
-        logger.info(f"> seqkit grep of serotyped reads took {timedelta(seconds=time_taken)}")
+        logger.info(f"> dnaio grep of serotyped reads took {timedelta(seconds=time_taken)}")
     elif not assigned_read_list:
         logger.info(f'no reads assigned to influenza')
     else:
