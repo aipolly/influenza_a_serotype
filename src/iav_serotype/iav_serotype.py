@@ -206,7 +206,7 @@ def iav_serotype():
 
     logger.info(f"read format : {str(args.READ_FMT)}")
 
-    tool_dep_list = ['minimap2', 'fastp', 'seqkit'] #lbzcat
+    tool_dep_list = ['minimap2', 'fastp', 'seqkit', 'samtools'] #lbzcat
     
     for tool in tool_dep_list:
         if not is_tool(tool):
