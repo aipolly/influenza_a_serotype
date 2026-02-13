@@ -29,8 +29,9 @@ original project url:  <https://github.com/mtisza1/influenza_a_serotype>
 git clone https://github.com/aipolly/influenza_a_serotype.git
 mamba create -n ias -f environment/iav_serotype.yaml
 mamba activate ias
-
-mamba run -n iav_serotype -h
+iav_serotype -h
+# or
+mamba run -n ias iav_serotype -h
 ```
 
 
