@@ -26,7 +26,7 @@ original project url:  <https://github.com/mtisza1/influenza_a_serotype>
 #### use conda/mamba
 
 ```bash
-git cone https://github.com/aipolly/influenza_a_serotype.git
+git clone https://github.com/aipolly/influenza_a_serotype.git
 mamba create -n ias -f environment/iav_serotype.yaml
 mamba activate ias
 
