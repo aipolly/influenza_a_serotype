@@ -27,18 +27,40 @@ original project url:  <https://github.com/mtisza1/influenza_a_serotype>
 
 ```bash
 git clone https://github.com/aipolly/influenza_a_serotype.git
-mamba create -n ias -f environment/iav_serotype.yaml
-mamba activate ias
-iav_serotype -h
-# or
-mamba run -n ias iav_serotype -h
+git checkout ref_analysis
+mamba create -n iav_serotype -f environment/iav_serotype.yaml
+
+
+wget https://zenodo.org/records/17354032/files/Influenza_Lite_DB.tar.gz
+tar -zxf Influenza_Lite_DB.tar.gz
+
+
+cd test_data
+tar -zxf SRR28752446.tar.gz
+
+
+mamba run -n iav_serotype iav_serotype \
+ -r iav_test_data_v020/SRR28752446-1.10k.fastq iav_test_data_v020/SRR28752446-2.10k.fastq \
+ -s sample \
+ -o sample_out \
+ --db ../liteDB_v1.1/ \
+ -t 4 \
+ --read_format short_paired
+ 
+ mamba run -n iav_serotype  serotype_ref_analysis \
+ -b sample_out/sample/sample_influenza_A.sorted.bam \
+ -s sample \
+ -o sample_out \
+ --db ../liteDB_v1.1 \
+ --cov-thresh 1
+
 ```
 
 
 
 #### using pip
 
-comfirm u have samtools seqkit and fastp
+comfirm you already have samtools seqkit and fastp ...
 
 ```bash
 
