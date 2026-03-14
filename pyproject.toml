@@ -28,7 +28,7 @@ where = ["src"]
 
 [project.scripts]  
 iav_serotype = "iav_serotype:iav_serotype"
-
+serotype_ref_analysis = "iav_serotype:serotype_ref_analysis"
 
 [project.urls]
 "Homepage" = "https://github.com/mtisza1/influenza_a_serotype"
