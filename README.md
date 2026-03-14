@@ -26,15 +26,17 @@ original project url:  <https://github.com/mtisza1/influenza_a_serotype>
 #### use conda/mamba
 
 ```bash
+# create env
 git clone https://github.com/aipolly/influenza_a_serotype.git
 git checkout ref_analysis
 mamba create -n iav_serotype -f environment/iav_serotype.yaml
 
-
+# download database
+cd influenza_a_serotype
 wget https://zenodo.org/records/17354032/files/Influenza_Lite_DB.tar.gz
 tar -zxf Influenza_Lite_DB.tar.gz
 
-
+# run test
 cd test_data
 tar -zxf SRR28752446.tar.gz
 
