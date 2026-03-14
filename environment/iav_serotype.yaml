@@ -16,4 +16,4 @@ dependencies:
   - bedtools
   - bcftools[version'>=1.17-0']
   - pip:
-    - git+https://github.com/aipolly/influenza_a_serotype.git
+    - git+https://github.com/aipolly/influenza_a_serotype.git@ref_analysis
